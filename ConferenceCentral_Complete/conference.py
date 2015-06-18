@@ -121,6 +121,7 @@ class ConferenceApi(remote.Service):
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
+
         user_id = getUserId(user)
 
         if not request.name:
@@ -147,6 +148,13 @@ class ConferenceApi(remote.Service):
         if not conference:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
+
+        creator_key = conference.key.parent()
+        current_user_key = ndb.Key(Profile, user_id)
+
+        if creator_key != current_user_key: 
+            raise endpoints.UnauthorizedException("User cannot add session to this conference")
+
         conference_key = conference.key
 
         session_id = Session.allocate_ids(size=1, parent=conference_key)[0]
