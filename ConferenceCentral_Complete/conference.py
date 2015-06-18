@@ -41,6 +41,7 @@ from models import TeeShirtSize
 from models import SessionForm
 from models import Session 
 from models import SessionForms
+from models import AddToWishlistForm
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -104,8 +105,6 @@ SESSION_GET_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     speaker = messages.StringField(2)
 )
-
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 @endpoints.api(name='conference', version='v1', audiences=[ANDROID_AUDIENCE],
@@ -230,9 +229,37 @@ class ConferenceApi(remote.Service):
     http_method='GET', name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
         """Return requested sessions (by speaker)."""
-        # get Conference object from request; bail if not found
-
         sessions = Session.query(Session.speaker==request.speaker)
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+ # - - - Wishlist objects - - - - - - - - - - - - - - - - -
+    @endpoints.method(AddToWishlistForm, AddToWishlistForm, path='wishlist',
+            http_method='POST', name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add session to user's wishlist."""
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+        prof = ndb.Key(Profile, user_id).get()
+        session_key = ndb.Key(urlsafe=request.sessionKey)
+        if session_key not in prof.wishlist:
+            prof.wishlist.append(session_key)
+            prof.put()
+        return request
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+    path='wishlist',
+    http_method='GET', name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Return user's wishlist."""
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+        prof = ndb.Key(Profile, user_id).get()
+        sessions = ndb.get_multi(prof.wishlist)
+
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
