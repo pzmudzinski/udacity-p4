@@ -43,3 +43,8 @@ def getUserId(user, id_type="email"):
             return profile.id()
         else:
             return str(uuid.uuid1().get_hex())
+
+def convertFormToDict(request): 
+    data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+    return data 
+
