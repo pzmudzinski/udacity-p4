@@ -54,6 +54,7 @@ from utils import *
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -138,7 +139,6 @@ class ConferenceApi(remote.Service):
         del data['websafeConferenceKey']
         del data['websafeKey']
 
-        # convert dates from strings to Date objects; set month based on start_date
         if data['date'] and data['startTime']:
             full_date = data['date'][:10] + ' ' + data['startTime']
             data['startDate'] = datetime.strptime(full_date, "%Y-%m-%d %H:%M")
@@ -169,7 +169,11 @@ class ConferenceApi(remote.Service):
         data['key'] = session_key
 
         session = Session(**data)
+
         session.put()
+
+        if Session.query(ancestor=conference_key).filter(Session.speaker==request.speaker).count() > 1:
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, request.speaker)
 
         return self._copySessionToForm(session)
 
@@ -198,6 +202,14 @@ class ConferenceApi(remote.Service):
     def createSession(self, request):
         """Create new session."""
         return self._createSessionObject(request)
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+    path='featured_speaker',
+    http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        return StringMessage(
+                data=memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY) or ""
+            )
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
             path='session/{websafeConferenceKey}',
