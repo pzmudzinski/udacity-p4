@@ -109,16 +109,15 @@ class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
 
-session_types = set(["boring", "very boring", "zzz"])
-
 class Session(ndb.Model): 
     name = ndb.StringProperty(required=True)
     highlights = ndb.StringProperty(repeated=True)
     speaker = ndb.StringProperty()
-    typeOfSession = ndb.StringProperty(choices=session_types)
+    typeOfSession = ndb.StringProperty()
     startDate = ndb.DateTimeProperty(required=True)
     endDate = ndb.DateTimeProperty(required=True) 
     duration = ndb.ComputedProperty(lambda self: (self.endDate - self.startDate).seconds / 60)
+    startHour = ndb.ComputedProperty(lambda self:self.startDate.hour)
 
 class SessionForm(messages.Message):
     name = messages.StringField(1)

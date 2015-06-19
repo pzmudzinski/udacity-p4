@@ -301,6 +301,24 @@ class ConferenceApi(remote.Service):
                 numberOfSessions = max_number_of_sessions
             )
 
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+    path='session.not_boring_after_7pm',
+    http_method='GET', name='getNotWorkshopsSessionsAfter7PM')
+    def getNotWorkshopsSessionsAfter7PM(self, request):
+
+        typeWhichWeDontWant = "workshop"
+        startHour = 19
+
+        sessions = Session.query(projection=[Session.typeOfSession], distinct=True).filter(Session.typeOfSession != typeWhichWeDontWant)
+
+        desiredSessionTypes = []
+        for session in sessions:
+            desiredSessionTypes.append(session.typeOfSession)
+
+        sessions = Session.query().filter(Session.startHour > startHour).filter(Session.typeOfSession.IN(desiredSessionTypes))
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+
 # - - - Conference objects - - - - - - - - - - - - - - - - -
 
     def _copyConferenceToForm(self, conf, displayName):
@@ -752,7 +770,8 @@ class ConferenceApi(remote.Service):
         # q = q.filter(f)
         q = q.filter(Conference.city=="London")
         q = q.filter(Conference.topics=="Medical Innovations")
-        q = q.filter(Conference.month==6)
+        q = q.order(Conference.name)
+        q = q.filter(Conference.maxAttendees > 10)
 
         return ConferenceForms(
             items=[self._copyConferenceToForm(conf, "") for conf in q]

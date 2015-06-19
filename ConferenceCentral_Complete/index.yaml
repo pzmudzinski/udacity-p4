@@ -53,6 +53,12 @@ indexes:
   properties:
   - name: city
   - name: topics
+  - name: maxAttendees
+
+- kind: Conference
+  properties:
+  - name: city
+  - name: topics
   - name: name
 
 - kind: Conference
@@ -94,6 +100,11 @@ indexes:
   properties:
   - name: topics
   - name: name
+
+- kind: Session
+  properties:
+  - name: typeOfSession
+  - name: startHour
 
 - kind: Session
   ancestor: yes
