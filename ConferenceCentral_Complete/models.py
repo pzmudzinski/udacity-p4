@@ -118,6 +118,7 @@ class Session(ndb.Model):
     typeOfSession = ndb.StringProperty(choices=session_types)
     startDate = ndb.DateTimeProperty(required=True)
     endDate = ndb.DateTimeProperty(required=True) 
+    duration = ndb.ComputedProperty(lambda self: (self.endDate - self.startDate).seconds / 60)
 
 class SessionForm(messages.Message):
     name = messages.StringField(1)
@@ -135,4 +136,9 @@ class SessionForms(messages.Message):
 
 class AddToWishlistForm(messages.Message):
     sessionKey = messages.StringField(1)
+
+class MostActiveSpeakerMessage(messages.Message):
+    speaker = messages.StringField(1)
+    numberOfSessions = messages.IntegerField(2)
+
 

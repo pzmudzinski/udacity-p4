@@ -42,6 +42,7 @@ from models import SessionForm
 from models import Session 
 from models import SessionForms
 from models import AddToWishlistForm
+from models import MostActiveSpeakerMessage
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -103,7 +104,13 @@ SESSION_GET_BY_TYPE_REQUEST = endpoints.ResourceContainer(
 
 SESSION_GET_BY_SPEAKER_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    speaker = messages.StringField(2)
+    speaker = messages.StringField(1)
+)
+
+SESSION_GET_LONGEST_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    limit = messages.IntegerField(2)
 )
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -178,11 +185,11 @@ class ConferenceApi(remote.Service):
         startDate = session.startDate
         startTime = startDate.strftime("%H:%M")
         date = startDate.strftime("%Y-%m-%d")
-        duration = session.endDate - session.startDate
+        #duration = session.endDate - session.startDate
 
         setattr(cf, 'date', date)
         setattr(cf, 'startTime', startTime)
-        setattr(cf, 'duration', duration.seconds / 60)
+        #setattr(cf, 'duration', session.duration)
         cf.check_initialized()
         return cf
 
@@ -261,6 +268,38 @@ class ConferenceApi(remote.Service):
         sessions = ndb.get_multi(prof.wishlist)
 
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(SESSION_GET_LONGEST_REQUEST, SessionForms,
+    path='session.longest',
+    http_method='GET', name='getLongestSessions')
+    def getLongestSessions(self, request):
+        """Return longest sessions from conference."""
+        if not request.limit:
+            raise endpoints.BadRequestException('No limit provided.')
+
+        sessions = Session.query(ancestor=ndb.Key(urlsafe=request.websafeConferenceKey)).order(Session.endDate).fetch(limit = request.limit)
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(message_types.VoidMessage, MostActiveSpeakerMessage,
+    path='session.most_active_speaker',
+    http_method='GET', name='getMostActiveSpeaker')
+    def getMostActiveSpeaker(self, request):
+        """Return speaker with most sessions in all conferences."""
+
+        sessions = Session.query(projection=[Session.speaker], distinct=True)
+        most_active_speaker_name = ""
+        max_number_of_sessions = 0
+
+        for session in sessions:
+            number_of_sessions = Session.query(Session.speaker==session.speaker).count()
+            if number_of_sessions > max_number_of_sessions:
+                most_active_speaker_name = session.speaker
+                max_number_of_sessions = number_of_sessions
+
+        return MostActiveSpeakerMessage(
+                speaker=most_active_speaker_name,
+                numberOfSessions = max_number_of_sessions
+            )
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
 
