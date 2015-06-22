@@ -130,8 +130,11 @@ class ConferenceApi(remote.Service):
 
         user_id = getUserId(user)
 
-        if not request.name:
-            raise endpoints.BadRequestException("Session 'name' field required")
+        fields_to_check = ["name", "duration", "startTime", "date", "speaker"]
+
+        for field in fields_to_check:
+            if  getattr(request, field) is None:
+                raise endpoints.BadRequestException("Session '%s' field required" % field)
 
         data = convertFormToDict(request)
         del data['websafeConferenceKey']
