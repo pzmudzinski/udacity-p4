@@ -173,9 +173,13 @@ class ConferenceApi(remote.Service):
 
         session.put()
 
-        # if speaker has more than one session during that conference, make him featured speaker
-        if Session.query(ancestor=conference_key).filter(Session.speaker == request.speaker).count() > 1:
-            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, request.speaker)
+        taskqueue.add(
+            params={
+                'speaker': session.speaker,
+                'conference': request.websafeConferenceKey
+            },
+            url='/tasks/set_featured_speaker'
+        )
 
         return self._copySessionToForm(session)
 
@@ -634,7 +638,7 @@ class ConferenceApi(remote.Service):
                         # if field == 'teeShirtSize':
                         # setattr(prof, field, str(val).upper())
                         # else:
-                        #    setattr(prof, field, val)
+                        # setattr(prof, field, val)
                         prof.put()
 
         # return ProfileForm
